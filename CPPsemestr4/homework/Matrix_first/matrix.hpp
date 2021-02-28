@@ -4,43 +4,43 @@
 
 #define EPSILON 0.001
 
-class SparceMatrix {
+class SparseMatrix {
 private: 
     struct MatrixNode{
-        float number;
         int row;
         int column;
+        float number;
         MatrixNode *nextNode;
         MatrixNode *prevNode;
-        float & operator [](int position);
-        float operator [](int position) const;
-        MatrixNode & operator +(int position);
+        float & operator [](int);
+        float operator [](int) const;
+        MatrixNode & operator +(int);
         float & operator *();
-        const MatrixNode & operator +(int position) const;
+        const MatrixNode & operator +(int) const;
         float operator *() const;
     };   
     MatrixNode *root;
-    size_t notNullNumbersSize;
     size_t rowsSize;
     size_t columnsSize;
-    bool areSame(double, double) const;
+    bool areSame(float, float) const;
+    MatrixNode* newNode(MatrixNode *, MatrixNode *, int, int, float) const;
 public:
-    SparceMatrix(size_t, size_t);
-    SparceMatrix(const SparceMatrix &);
-    ~SparceMatrix();
+    SparseMatrix(size_t, size_t);
+    SparseMatrix(const SparseMatrix &);
+    ~SparseMatrix();
     float getNumber(int, int) const;
-    void setNumber(int, int, double);
+    void setNumber(int, int, float);
     size_t getRowsSize() const;
     size_t getColumnsSize() const;
-    bool operator ==(const SparceMatrix &) const;
-    bool operator !=(const SparceMatrix &) const;
-    SparceMatrix operator +(const SparceMatrix &) const;
-    SparceMatrix & operator =(const SparceMatrix &);
-    SparceMatrix operator *(const SparceMatrix &) const;
+    bool operator ==(const SparseMatrix &) const;
+    bool operator !=(const SparseMatrix &) const;
+    SparseMatrix operator +(const SparseMatrix &) const;
+    SparseMatrix & operator =(const SparseMatrix &);
+    SparseMatrix operator *(const SparseMatrix &) const;
     MatrixNode & operator *();
-    SparceMatrix & operator +(int position);
+    SparseMatrix & operator +(int);
     const MatrixNode & operator *() const;
-    const SparceMatrix & operator +(int position) const;
-    MatrixNode & operator [](int position);
-    const MatrixNode & operator [](int position) const;
+    const SparseMatrix & operator +(int) const;
+    MatrixNode & operator [](int);
+    const MatrixNode & operator [](int) const;
 };

@@ -1,28 +1,48 @@
 #include "matrix.hpp"
 
-bool SparceMatrix::areSame(double a, double b) const
+bool SparseMatrix::areSame(float a, float b) const
 {
     return (((a - b) < EPSILON) && ((b - a) < EPSILON));
 }
 
-SparceMatrix::SparceMatrix(size_t reqRowsSize, size_t reqColumsSize)
+SparseMatrix::MatrixNode* SparseMatrix::newNode(MatrixNode *prev, MatrixNode *next, int oldRow, int oldColumn, float oldNumber) const
+{
+    MatrixNode *node = new MatrixNode;
+    node->prevNode = prev;
+    if (prev != NULL) {
+        prev->nextNode = node;
+    }
+    node->nextNode = next;
+    node->column = oldColumn;
+    node->row = oldRow;
+    node->number = oldNumber;
+    return node;
+}
+
+SparseMatrix::SparseMatrix(size_t reqRowsSize, size_t reqColumsSize)
 {
     this->rowsSize = reqRowsSize;
     this->columnsSize = reqColumsSize;
-    notNullNumbersSize = 0;
     root = NULL;
 }
 
-SparceMatrix::SparceMatrix(const SparceMatrix & oldMatrix)
+SparseMatrix::SparseMatrix(const SparseMatrix & oldMatrix)
 {
+    float number;
+    root = NULL;
+    rowsSize = oldMatrix.rowsSize;
+    columnsSize = oldMatrix.columnsSize;
     for (size_t i = 0; i < rowsSize; ++i) {
         for (size_t j = 0; j < columnsSize; ++j) {
-            setNumber(i, j, oldMatrix.getNumber(i, j));
+            number = oldMatrix.getNumber(i, j);
+            if (!areSame(number, 0.0)) {
+                setNumber(i, j, number);
+            }
         }
     }
 }
 
-SparceMatrix::~SparceMatrix()
+SparseMatrix::~SparseMatrix()
 {
     MatrixNode *currentNode = root;
     if (currentNode == NULL) {
@@ -31,7 +51,6 @@ SparceMatrix::~SparceMatrix()
     while(currentNode->nextNode != NULL) {
         currentNode = currentNode->nextNode;
     }
-
     while(currentNode->prevNode != NULL) {
         currentNode  = currentNode->prevNode;
         delete currentNode->nextNode;
@@ -40,9 +59,12 @@ SparceMatrix::~SparceMatrix()
 }
 
 //If there is saved number != 0 at (row, column), then result == number, else result == 0 
-float SparceMatrix::getNumber(int row, int column) const
+float SparseMatrix::getNumber(int row, int column) const
 {
     MatrixNode *currentNode = root;
+    if (currentNode == NULL) {
+        return 0;
+    }
     while(currentNode != NULL) {
         if ((currentNode->row == row) && (currentNode->column == column)) {
             return currentNode->number;
@@ -52,18 +74,13 @@ float SparceMatrix::getNumber(int row, int column) const
     return 0;
 }
 
-void SparceMatrix::setNumber(int row, int column, double number)
+void SparseMatrix::setNumber(int row, int column, float number)
 {
     if (root == NULL) {
         if (areSame(number, 0.0)) {
             return;
         }
-        root = new MatrixNode;
-        root->number = number;
-        root->row = row;
-        root->column = column;
-        root->nextNode = NULL;
-        root->prevNode = NULL;
+        root = newNode(NULL, NULL, row, column, number);
         return;
     }
     MatrixNode *currentNode = root;
@@ -84,26 +101,20 @@ void SparceMatrix::setNumber(int row, int column, double number)
     } while(currentNode != NULL);
     //Add number at (row, column)
     currentNode = tail;
-    currentNode->nextNode = new MatrixNode;
-    currentNode->nextNode->prevNode = currentNode;
-    currentNode = currentNode->nextNode;
-    currentNode->nextNode = NULL;
-    currentNode->row = row;
-    currentNode->column = column;
-    currentNode->number = number;
+    newNode(currentNode, NULL, row, column, number);
 }
 
-size_t SparceMatrix::getRowsSize() const
+size_t SparseMatrix::getRowsSize() const
 {
     return rowsSize;
 }
 
-size_t SparceMatrix::getColumnsSize() const
+size_t SparseMatrix::getColumnsSize() const
 {
     return columnsSize;
 }
 
-bool SparceMatrix::operator ==(const SparceMatrix & secondMatrix) const
+bool SparseMatrix::operator ==(const SparseMatrix & secondMatrix) const
 {
     MatrixNode *currentNode = root;
     if (currentNode != NULL) {
@@ -126,16 +137,16 @@ bool SparceMatrix::operator ==(const SparceMatrix & secondMatrix) const
     return true;
 }
 
-bool SparceMatrix::operator !=(const SparceMatrix & s) const
+bool SparseMatrix::operator !=(const SparseMatrix & s) const
 {
     return !(*this == s);
 }
 
-SparceMatrix SparceMatrix::operator +(const SparceMatrix & s) const
+SparseMatrix SparseMatrix::operator +(const SparseMatrix & s) const
 {
     float firstMtxNum;
     float secondMtxNum;
-    SparceMatrix temp(rowsSize, columnsSize);
+    SparseMatrix temp(rowsSize, columnsSize);
     for (size_t i = 0; i < rowsSize; ++i) {
         for (size_t j = 0; j < columnsSize; ++j) {
             firstMtxNum = getNumber(i, j);
@@ -149,10 +160,10 @@ SparceMatrix SparceMatrix::operator +(const SparceMatrix & s) const
     return temp;
 } 
 
-SparceMatrix SparceMatrix::operator *(const SparceMatrix & s) const
+SparseMatrix SparseMatrix::operator *(const SparseMatrix & s) const
 {
     float number;
-    SparceMatrix temp(rowsSize, s.columnsSize);
+    SparseMatrix temp(rowsSize, s.columnsSize);
     for (size_t i = 0; i < rowsSize; ++i) {
         for (size_t j = 0; j < s.columnsSize; ++j) {
             number = 0;
@@ -168,77 +179,65 @@ SparceMatrix SparceMatrix::operator *(const SparceMatrix & s) const
     return temp;
 }
 
-SparceMatrix & SparceMatrix::operator =(const SparceMatrix & oldMatrix) 
+SparseMatrix & SparseMatrix::operator =(const SparseMatrix & oldMatrix) 
 {
-    for (size_t i = 0; i < rowsSize; ++i) {
-        for (size_t j = 0; j < columnsSize; ++j) {
-            setNumber(i, j, oldMatrix.getNumber(i, j));
-        }
+    MatrixNode *currentNode = root;
+    if (currentNode == NULL) {
+        return *this;
+    }
+    while (currentNode != NULL) {
+        setNumber(currentNode->row, currentNode->column, currentNode->number);
     }
     return *this;
 } 
 
-SparceMatrix & SparceMatrix::operator +(int position) 
+SparseMatrix & SparseMatrix::operator +(int position) 
 {      
     MatrixNode *currentNode = root;
     if (root != NULL) {
         while (currentNode->nextNode != NULL) {
             currentNode = currentNode->nextNode;
         }
-        currentNode->nextNode = new MatrixNode;
-        currentNode->nextNode->prevNode = currentNode;
-        currentNode = currentNode->nextNode;
-        currentNode->row = position;
-        currentNode->column = -1;
-        currentNode->nextNode = NULL;
+        newNode(currentNode, NULL, position, -1, 0);
+        
         return *this;
     }
-    currentNode = new MatrixNode;
-    currentNode->prevNode = NULL;
-    currentNode->nextNode = NULL;
-    currentNode->row = position;
-    currentNode->column = -1;
+    currentNode = newNode(NULL, NULL, position, -1, 0);
     root = currentNode;
     return *this;
     
 }
 
-SparceMatrix::MatrixNode & SparceMatrix::operator *() 
+SparseMatrix::MatrixNode & SparseMatrix::operator *() 
 {
     MatrixNode *currentNode = root;
     if (currentNode != NULL) {
         while (currentNode->nextNode != NULL) {
             currentNode = currentNode->nextNode;
         }
+        if (areSame(currentNode->number, 0)) {
+            return *currentNode;
+        }
         if (currentNode->column != -1) {
-            currentNode->nextNode = new MatrixNode;
-            currentNode->nextNode->prevNode = currentNode;
-            currentNode = currentNode->nextNode;
-            currentNode->row = 0;
-            currentNode->column = -1;
-            currentNode->nextNode = NULL;
+            currentNode = newNode(currentNode, NULL, 0, -1, 0);
         }
         return *currentNode;
 
     }
-    currentNode = new MatrixNode;
-    currentNode->prevNode = NULL;
-    currentNode->nextNode = NULL;
-    currentNode->row = 0;
-    currentNode->column = -1;
+    currentNode = newNode(NULL, NULL, 0, -1, 0);
     root = currentNode;
     return *currentNode;
     
     
 }
 
-SparceMatrix::MatrixNode & SparceMatrix::MatrixNode::operator +(int position) 
+SparseMatrix::MatrixNode & SparseMatrix::MatrixNode::operator +(int position) 
 {
     this->column = position;
     return *this;
 }
 
-float & SparceMatrix::MatrixNode::operator *() 
+float & SparseMatrix::MatrixNode::operator *() 
 {
     MatrixNode *currentNode = this;
     int newRow = currentNode->row, newColumn = currentNode->column; 
@@ -261,50 +260,89 @@ float & SparceMatrix::MatrixNode::operator *()
     return this->number;
 }
 
-SparceMatrix::MatrixNode & SparceMatrix::operator [](int position)// (matrix[x])[y]
+const SparseMatrix::MatrixNode & SparseMatrix::operator *() const
+{
+    MatrixNode *currentNode = root;
+    if (currentNode == NULL) {
+        currentNode = newNode(NULL, NULL, 0, -2, 0);
+        return *currentNode;
+    }
+    while (currentNode->nextNode != NULL) {
+        currentNode = currentNode->nextNode;
+    }
+    if (currentNode->column != -1) {
+        currentNode = newNode(currentNode, NULL, 0, -1, 0);
+    }
+    newNode(currentNode, NULL, 0, 0, 0);
+    return *currentNode->nextNode;
+}
+const SparseMatrix & SparseMatrix::operator +(int position) const 
+{
+    MatrixNode *currentNode = root;
+    if (currentNode == NULL) {
+        return *this;
+    }
+    while (currentNode->nextNode != NULL) {
+        currentNode = currentNode->nextNode;
+    }
+    newNode(currentNode, NULL, position, -1, 0);
+    return *this;
+}
+
+const SparseMatrix::MatrixNode & SparseMatrix::MatrixNode::operator +(int position) const
+{
+    if(this->column != -2) {
+        this->prevNode->column = position;
+    }
+    return *this;
+}
+float SparseMatrix::MatrixNode::operator *() const 
+{
+    if (this->column == -2) {
+        delete this;
+        return 0;
+    }
+    const MatrixNode *currentNode = this->prevNode;
+    int newRow = currentNode->row, newColumn = currentNode->column; 
+    if (newColumn == -1) {
+        newColumn = 0;
+    }
+    while (currentNode != NULL) {
+        if ((currentNode->row == newRow) && (currentNode->column == newColumn) && (currentNode != this->prevNode))
+        {
+            this->prevNode->prevNode->nextNode = NULL;
+            delete this->prevNode;
+            delete this;
+            return currentNode->number;
+        }
+        currentNode = currentNode->prevNode;
+    }
+    this->prevNode->prevNode->nextNode = NULL;
+    delete this->prevNode;
+    delete this;
+    return 0;
+
+}
+
+SparseMatrix::MatrixNode & SparseMatrix::operator [](int position)// (matrix[x])[y]
 {
     MatrixNode *currentNode = root;
     if (currentNode != NULL) {
         while(currentNode->nextNode != NULL) {
             currentNode = currentNode->nextNode;
         }
-        currentNode->nextNode = new MatrixNode;
-        currentNode->nextNode->prevNode = currentNode;
-        currentNode = currentNode->nextNode;
-        currentNode->row = position;
-        currentNode->column = -1;
-        currentNode->nextNode = NULL;
+        if (areSame(currentNode->number, 0)) {
+            return *currentNode;
+        }
+        currentNode = newNode(currentNode, NULL, position, -1, 0);
         return *currentNode;
     }
-    currentNode = new MatrixNode;
-    currentNode->prevNode = NULL;
-    currentNode->nextNode = NULL;
-    currentNode->row = position;
-    currentNode->column = -1;
+    currentNode = newNode(NULL, NULL, position, -1, 0);
     root = currentNode;
     return *currentNode;
 }
 
-const SparceMatrix::MatrixNode & SparceMatrix::operator *() const
-{
-    MatrixNode *currentNode = NULL;
-    return *currentNode;
-}
-const SparceMatrix & SparceMatrix::operator +(int position) const 
-{
-    return *this;
-}
-
-const SparceMatrix::MatrixNode & SparceMatrix::MatrixNode::operator +(int position) const
-{
-    return *this;
-}
-float SparceMatrix::MatrixNode::operator *() const 
-{
-    return 0;
-}
-
-float & SparceMatrix::MatrixNode::operator [](int position)
+float & SparseMatrix::MatrixNode::operator [](int position)
 {
     int row1 = this->row;
     MatrixNode *currentNode = this;
@@ -321,13 +359,37 @@ float & SparceMatrix::MatrixNode::operator [](int position)
     return this->number;
 }
 
-const SparceMatrix::MatrixNode & SparceMatrix::operator [](int position) const 
+const SparseMatrix::MatrixNode & SparseMatrix::operator [](int position) const 
 {
-    MatrixNode *currentNode = NULL;
+    MatrixNode *currentNode = root;
+    if (currentNode == NULL) {
+        currentNode = newNode(NULL, NULL, position, -2, 0);
+        return *currentNode;
+    }
+    while (currentNode->nextNode != NULL) {
+        currentNode = currentNode->nextNode;
+    }
+    currentNode = newNode(currentNode, NULL, position, -1, 0);
     return *currentNode;
 }
 
-float SparceMatrix::MatrixNode::operator [](int position) const
+float SparseMatrix::MatrixNode::operator [](int position) const
 {
+    const MatrixNode *currentNode = this;
+    if (currentNode->column == -2) {
+        delete this;
+        return 0;
+    }
+    int newRow = currentNode->row;
+    while (currentNode != NULL) {
+        if ((currentNode->row == newRow) && (currentNode->column == position)) {
+            this->prevNode->nextNode = NULL;
+            delete this;
+            return currentNode->number;
+        }   
+        currentNode = currentNode->prevNode;
+    }
+    this->prevNode->nextNode = NULL;
+    delete this;
     return 0;
 }
